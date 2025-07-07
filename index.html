@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mermaid Sequence Diagram Tool</title>
+
+  <!-- Tailwind (for development; use compiled CSS in production) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Libraries (offline) -->
+  <script src="./libs/mermaid.min.js"></script>
+  <script src="./libs/html2canvas.min.js"></script>
+  <script src="./libs/jspdf.umd.min.js"></script>
+  <script src="./libs/svg-pan-zoom.min.js"></script>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      securityLevel: 'loose',
+      sequence: {
+        diagramMarginX: 50,
+        diagramMarginY: 50,
+        boxMargin: 10,
+        messageFontSize: 16, // Increase font size for clarity
+        actorFontSize: 16,
+        width: 300, // Wider actors for better detail
+      }
+    });
+  </script>
+
+  <style>
+    #fullscreenContent svg {
+      max-width: 100vw;
+      max-height: calc(100vh - 60px); /* Leave space for close button */
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: auto;
+      background-color: #000;
+      image-rendering: -webkit-optimize-contrast; /* Improve SVG crispness */
+      image-rendering: crisp-edges;
+    }
+    #fullscreenViewer {
+      background-color: #000;
+    }
+    #diagram svg {
+      max-width: 100%;
+      width: auto;
+      height: auto;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+    #fullscreenViewer button {
+      z-index: 1000; /* Ensure button is above SVG */
+    }
+    .svg-pan-zoom-control {
+      background: rgba(0, 0, 0, 0.7) !important; /* Ensure zoom controls are visible */
+      border-radius: 4px;
+      z-index: 1001; /* Above SVG */
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6">
+  <div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">🧠 CIATech Sequence Diagram Tool</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Mermaid Input -->
+      <div>
+        <label for="code" class="block mb-2 font-semibold">Mermaid Syntax:</label>
+        <textarea
+          id="code"
+          rows="12"
+          class="w-full p-3 bg-gray-800 text-white rounded"
+          placeholder="Paste your sequence diagram code here..."
+        >sequenceDiagram
+participant A
+participant B
+participant C
+participant D
+participant E
+participant F
+participant G
+A->>B: Request
+B->>C: Forward
+C->>D: Process
+D->>E: Query
+E->>F: Validate
+F->>G: Confirm
+G-->>F: Ack
+F-->>E: Result
+E-->>D: Response
+D-->>C: Result
+C-->>B: Ack
+B-->>A: Done</textarea>
+        <button
+          onclick="renderDiagram()"
+          class="mt-4 px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-700"
+        >Render</button>
+      </div>
+
+      <!-- Output & Controls -->
+      <div>
+        <div id="diagram" class="bg-gray-800 p-4 rounded overflow-auto min-h-[300px] text-white"></div>
+        <div class="mt-4 flex flex-wrap gap-4">
+          <button onclick="exportPNG()" class="px-4 py-2 bg-green-600 rounded hover:bg-green-700">Export PNG</button>
+          <button onclick="exportPDF()" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700">Export PDF</button>
+          <button onclick="openFullscreen()" class="px-4 py-2 bg-yellow-600 rounded hover:bg-yellow-700">Fullscreen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Viewer -->
+  <div id="fullscreenViewer" class="fixed inset-0 hidden z-50 overflow-hidden">
+    <button id="closeFullscreenBtn" class="fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 z-1000">
+      Close
+    </button>
+    <div id="fullscreenContent" class="w-full h-full overflow-hidden flex items-center justify-center bg-black">
+      <!-- SVG gets injected here -->
+    </div>
+  </div>
+
+  <!-- Script -->
+  <script>
+    function renderDiagram() {
+      const code = document.getElementById('code').value;
+      const diagramEl = document.getElementById('diagram');
+      const id = 'mermaid-sequence-' + Date.now();
+
+      mermaid.render(id, code).then(({ svg }) => {
+        diagramEl.innerHTML = svg;
+
+        const svgEl = diagramEl.querySelector('svg');
+        if (svgEl) {
+          svgEl.removeAttribute('width');
+          svgEl.removeAttribute('height');
+          svgEl.style.width = 'auto';
+          svgEl.style.height = 'auto';
+        }
+      }).catch(err => {
+        diagramEl.innerHTML = `<p class="text-red-400">❌ Diagram render failed. Please check Mermaid syntax.</p>`;
+        console.error("Mermaid render error:", err);
+      });
+    }
+
+    async function exportPNG() {
+      const diagram = document.getElementById('diagram');
+      // Increase scale for higher resolution (4K-like)
+      const canvas = await html2canvas(diagram, {
+        scale: 4, // 4x resolution for HD/4K quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#000000'
+      });
+      const link = document.createElement('a');
+      link.download = 'diagram.png';
+      link.href = canvas.toDataURL('image/png', 1.0); // Maximum quality
+      link.click();
+    }
+
+    async function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const diagram = document.getElementById('diagram');
+      const canvas = await html2canvas(diagram, {
+        scale: 4, // 4x resolution for HD/4K quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#000000'
+      });
+      const imgData = canvas.toDataURL('image/png', 1.0);
+
+      // Calculate dimensions for 300 DPI
+      const dpi = 300;
+      const imgWidth = canvas.width / 4; // Scale back from 4x
+      const imgHeight = canvas.height / 4;
+      const pageWidth = imgWidth * 72 / dpi; // Convert pixels to points
+      const pageHeight = imgHeight * 72 / dpi;
+
+      const pdf = new jsPDF({
+        orientation: pageWidth > pageHeight ? 'landscape' : 'portrait',
+        unit: 'pt',
+        format: [pageWidth + 20, pageHeight + 20] // Add margins
+      });
+
+      pdf.addImage(imgData, 'PNG', 10, 10, pageWidth, pageHeight, '', 'FAST');
+      pdf.save('diagram.pdf');
+    }
+
+    let panZoomInstance = null;
+    let resizeHandler = null;
+
+    function openFullscreen() {
+      const diagram = document.getElementById('diagram');
+      const viewer = document.getElementById('fullscreenViewer');
+      const content = document.getElementById('fullscreenContent');
+
+      // Inject SVG content
+      content.innerHTML = diagram.innerHTML;
+      viewer.classList.remove('hidden');
+
+      // Initialize close button
+      const closeBtn = document.getElementById('closeFullscreenBtn');
+      closeBtn.onclick = closeFullscreen;
+
+      // Initialize svg-pan-zoom
+      const svg = content.querySelector('svg');
+      if (svg) {
+        // Preserve viewBox and set dimensions
+        const viewBox = svg.getAttribute('viewBox');
+        if (viewBox) {
+          const [x, y, width, height] = viewBox.split(' ').map(Number);
+          const aspectRatio = width / height;
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight - 60; // Account for close button
+          let svgWidth = viewportWidth;
+          let svgHeight = svgWidth / aspectRatio;
+
+          if (svgHeight > viewportHeight) {
+            svgHeight = viewportHeight;
+            svgWidth = svgHeight * aspectRatio;
+          }
+
+          svg.style.width = `${svgWidth}px`;
+          svg.style.height = `${svgHeight}px`;
+          svg.style.maxWidth = `${viewportWidth}px`;
+          svg.style.maxHeight = `${viewportHeight}px`;
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = 'auto';
+        }
+
+        // Reset previous panZoom instance
+        if (panZoomInstance) {
+          panZoomInstance.destroy();
+        }
+
+        try {
+          panZoomInstance = svgPanZoom(svg, {
+            zoomEnabled: true,
+            controlIconsEnabled: true,
+            fit: true,
+            center: true,
+            minZoom: 0.05, // Allow zooming out for wide diagrams
+            maxZoom: 20, // Increase max zoom for detail
+            zoomScaleSensitivity: 0.3, // Smoother zoom
+            contain: false // Allow SVG to be fully visible
+          });
+
+          // Adjust initial zoom for wide diagrams
+          const svgWidth = svg.getBoundingClientRect().width;
+          const viewportWidth = window.innerWidth;
+          if (svgWidth > viewportWidth) {
+            panZoomInstance.zoom(viewportWidth / svgWidth * 0.95);
+          } else {
+            panZoomInstance.fit();
+          }
+          panZoomInstance.center();
+
+          console.log("svg-pan-zoom initialized successfully");
+        } catch (err) {
+          console.error("svg-pan-zoom initialization failed:", err);
+        }
+
+        // Handle window resize
+        resizeHandler = () => {
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight - 60;
+          let svgWidth = viewportWidth;
+          let svgHeight = svgWidth / aspectRatio;
+
+          if (svgHeight > viewportHeight) {
+            svgHeight = viewportHeight;
+            svgWidth = svgHeight * aspectRatio;
+          }
+
+          svg.style.width = `${svgWidth}px`;
+          svg.style.height = `${svgHeight}px`;
+          svg.style.maxWidth = `${viewportWidth}px`;
+          svg.style.maxHeight = `${viewportHeight}px`;
+
+          if (panZoomInstance) {
+            panZoomInstance.resize();
+            panZoomInstance.fit();
+            panZoomInstance.center();
+          }
+        };
+        window.addEventListener('resize', resizeHandler);
+      } else {
+        console.error("No SVG found in fullscreen content");
+      }
+    }
+
+    function closeFullscreen() {
+      const viewer = document.getElementById('fullscreenViewer');
+      const content = document.getElementById('fullscreenContent');
+
+      // Clean up resize event listener
+      if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler);
+        resizeHandler = null;
+      }
+
+      // Destroy panZoom instance
+      if (panZoomInstance) {
+        panZoomInstance.destroy();
+        panZoomInstance = null;
+      }
+
+      // Reset viewer
+      viewer.classList.add('hidden');
+      content.innerHTML = '';
+    }
+
+    // Default diagram
+    window.onload = renderDiagram;
+  </script>
+</body>
+</html>
