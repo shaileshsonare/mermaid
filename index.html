@@ -77,25 +77,25 @@
           placeholder="Paste your sequence diagram code here..."
         >sequenceDiagram
 autonumber
-participant A
-participant B
-participant C
-participant D
-participant E
-participant F
-participant G
-A->>B: Request
-B->>C: Forward
-C->>D: Process
-D->>E: Query
-E->>F: Validate
-F->>G: Confirm
-G-->>F: Ack
-F-->>E: Result
-E-->>D: Response
-D-->>C: Result
-C-->>B: Ack
-B-->>A: Done</textarea>
+participant User
+participant Application/Program
+participant Input/Output System
+
+User->>Application/Program: Start execution
+Application/Program->>Input/Output System: Request first number (e.g., "Enter number1:")
+Input/Output System->>User: Display prompt and wait for input
+User->>Input/Output System: Provide first number (e.g., "5")
+Input/Output System-->>Application/Program: Return first number (as string)
+Application/Program->>Application/Program: Convert first string to numerical value
+
+Application/Program->>Input/Output System: Request second number (e.g., "Enter number2:")
+Input/Output System->>User: Display prompt and wait for input
+User->>Input/Output System: Provide second number (e.g., "6")
+Input/Output System-->>Application/Program: Return second number (as string)
+Application/Program->>Application/Program: Convert second string to numerical value
+
+Application/Program->>Application/Program: Perform addition of numerical values
+Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
         <button
           onclick="renderDiagram()"
           class="mt-4 px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-700"
