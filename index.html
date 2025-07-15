@@ -15,36 +15,77 @@
   <script src="./lib/svg-pan-zoom.min.js"></script>
 
   <script>
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: 'dark',
-      securityLevel: 'loose',
-      sequence: {
-        diagramMarginX: 50,
-        diagramMarginY: 50,
-        boxMargin: 10,
-        messageFontSize: 16, // Increase font size for clarity
-        actorFontSize: 16,
-        width: 300, // Wider actors for better detail
-      }
-    });
+    function initializeMermaid(theme) {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: theme === 'dark' ? 'dark' : 'default',
+        securityLevel: 'loose',
+        sequence: {
+          diagramMarginX: 50,
+          diagramMarginY: 50,
+          boxMargin: 10,
+          messageFontSize: 16,
+          actorFontSize: 16,
+          width: 300,
+        }
+      });
+    }
   </script>
 
   <style>
+    :root {
+      /* Dark Theme */
+      --bg-dark: #1f2937; /* Tailwind bg-gray-900 */
+      --text-dark: #ffffff; /* Tailwind text-white */
+      --input-bg-dark: #1f2937; /* Tailwind bg-gray-800 */
+      --diagram-bg-dark: #000000;
+      --subtext-dark: #d1d5db; /* Tailwind text-gray-300 */
+
+      /* Light Theme */
+      --bg-light: #f3f4f6; /* Tailwind bg-gray-100 */
+      --text-light: #1f2937; /* Tailwind text-gray-900 */
+      --input-bg-light: #ffffff; /* Tailwind bg-white */
+      --diagram-bg-light: #ffffff;
+      --subtext-light: #4b5563; /* Tailwind text-gray-600 */
+
+      /* Default to dark theme */
+      --bg: var(--bg-dark);
+      --text: var(--text-dark);
+      --input-bg: var(--input-bg-dark);
+      --diagram-bg: var(--diagram-bg-dark);
+      --subtext: var(--subtext-dark);
+    }
+
+    [data-theme="light"] {
+      --bg: var(--bg-light);
+      --text: var(--text-light);
+      --input-bg: var(--input-bg-light);
+      --diagram-bg: var(--diagram-bg-light);
+      --subtext: var(--subtext-light);
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      transition: all 0.3s ease;
+    }
+
     #fullscreenContent svg {
       max-width: 100vw;
-      max-height: calc(100vh - 60px); /* Leave space for close button */
+      max-height: calc(100vh - 60px);
       width: 100%;
       height: auto;
       display: block;
       margin: auto;
-      background-color: #000;
-      image-rendering: -webkit-optimize-contrast; /* Improve SVG crispness */
+      background-color: var(--diagram-bg);
+      image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
     }
+
     #fullscreenViewer {
-      background-color: #000;
+      background-color: var(--diagram-bg);
     }
+
     #diagram svg {
       max-width: 100%;
       width: auto;
@@ -52,28 +93,39 @@
       image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
     }
+
     #fullscreenViewer button {
-      z-index: 1000; /* Ensure button is above SVG */
+      z-index: 1000;
     }
+
     .svg-pan-zoom-control {
-      background: rgba(0, 0, 0, 0.7) !important; /* Ensure zoom controls are visible */
+      background: rgba(0, 0, 0, 0.7) !important;
       border-radius: 4px;
-      z-index: 1001; /* Above SVG */
+      z-index: 1001;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1000;
     }
   </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-6">
+<body class="min-h-screen p-6">
+  <button class="theme-toggle px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-700 text-white" onclick="toggleTheme()">🌙</button>
   <div class="max-w-7xl mx-auto">
     <h1 class="text-3xl font-bold mb-6 text-center">CIA Sequence Diagram Tool</h1>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Mermaid Input -->
       <div>
-        <label for="code" class="block mb-2 font-semibold">Mermaid Syntax:</label>
+        <label for="code" class="block mb-2 font-semibold" style="color: var(--text);">Mermaid Syntax:</label>
         <textarea
           id="code"
           rows="12"
-          class="w-full p-3 bg-gray-800 text-white rounded"
+          class="w-full p-3 rounded"
+          style="background-color: var(--input-bg); color: var(--text);"
           placeholder="Paste your sequence diagram code here..."
         >sequenceDiagram
 autonumber
@@ -104,7 +156,7 @@ Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
 
       <!-- Output & Controls -->
       <div>
-        <div id="diagram" class="bg-gray-800 p-4 rounded overflow-auto min-h-[300px] text-white"></div>
+        <div id="diagram" class="p-4 rounded overflow-auto min-h-[300px]" style="background-color: var(--input-bg); color: var(--text);"></div>
         <div class="mt-4 flex flex-wrap gap-4">
           <button onclick="exportPNG()" class="px-4 py-2 bg-green-600 rounded hover:bg-green-700">Export PNG</button>
           <button onclick="exportPDF()" class="px-4 py-2 bg-red-600 rounded hover:bg-red-700">Export PDF</button>
@@ -119,13 +171,35 @@ Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
     <button id="closeFullscreenBtn" class="fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 z-1000">
       Close
     </button>
-    <div id="fullscreenContent" class="w-full h-full overflow-hidden flex items-center justify-center bg-black">
+    <div id="fullscreenContent" class="w-full h-full overflow-hidden flex items-center justify-center">
       <!-- SVG gets injected here -->
     </div>
   </div>
 
   <!-- Script -->
   <script>
+    // Initialize Mermaid with saved theme or default to dark
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.body.setAttribute('data-theme', savedTheme);
+    initializeMermaid(savedTheme);
+    updateToggleIcon(savedTheme);
+
+    function toggleTheme() {
+      const body = document.body;
+      const currentTheme = body.getAttribute('data-theme') || 'dark';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      body.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      initializeMermaid(newTheme);
+      updateToggleIcon(newTheme);
+      renderDiagram(); // Re-render diagram with new theme
+    }
+
+    function updateToggleIcon(theme) {
+      const button = document.querySelector('.theme-toggle');
+      button.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
     function renderDiagram() {
       const code = document.getElementById('code').value;
       const diagramEl = document.getElementById('diagram');
@@ -142,23 +216,22 @@ Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
           svgEl.style.height = 'auto';
         }
       }).catch(err => {
-        diagramEl.innerHTML = `<p class="text-red-400">❌ Diagram render failed. Please check Mermaid syntax.</p>`;
+        diagramEl.innerHTML = `<p style="color: var(--subtext);">❌ Diagram render failed. Please check Mermaid syntax.</p>`;
         console.error("Mermaid render error:", err);
       });
     }
 
     async function exportPNG() {
       const diagram = document.getElementById('diagram');
-      // Increase scale for higher resolution (4K-like)
       const canvas = await html2canvas(diagram, {
-        scale: 4, // 4x resolution for HD/4K quality
+        scale: 4,
         useCORS: true,
         logging: false,
-        backgroundColor: '#000000'
+        backgroundColor: document.body.getAttribute('data-theme') === 'dark' ? '#000000' : '#ffffff'
       });
       const link = document.createElement('a');
       link.download = 'diagram.png';
-      link.href = canvas.toDataURL('image/png', 1.0); // Maximum quality
+      link.href = canvas.toDataURL('image/png', 1.0);
       link.click();
     }
 
@@ -166,24 +239,23 @@ Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
       const { jsPDF } = window.jspdf;
       const diagram = document.getElementById('diagram');
       const canvas = await html2canvas(diagram, {
-        scale: 4, // 4x resolution for HD/4K quality
+        scale: 4,
         useCORS: true,
         logging: false,
-        backgroundColor: '#000000'
+        backgroundColor: document.body.getAttribute('data-theme') === 'dark' ? '#000000' : '#ffffff'
       });
       const imgData = canvas.toDataURL('image/png', 1.0);
 
-      // Calculate dimensions for 300 DPI
       const dpi = 300;
-      const imgWidth = canvas.width / 4; // Scale back from 4x
+      const imgWidth = canvas.width / 4;
       const imgHeight = canvas.height / 4;
-      const pageWidth = imgWidth * 72 / dpi; // Convert pixels to points
+      const pageWidth = imgWidth * 72 / dpi;
       const pageHeight = imgHeight * 72 / dpi;
 
       const pdf = new jsPDF({
         orientation: pageWidth > pageHeight ? 'landscape' : 'portrait',
         unit: 'pt',
-        format: [pageWidth + 20, pageHeight + 20] // Add margins
+        format: [pageWidth + 20, pageHeight + 20]
       });
 
       pdf.addImage(imgData, 'PNG', 10, 10, pageWidth, pageHeight, '', 'FAST');
@@ -198,24 +270,20 @@ Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
       const viewer = document.getElementById('fullscreenViewer');
       const content = document.getElementById('fullscreenContent');
 
-      // Inject SVG content
       content.innerHTML = diagram.innerHTML;
       viewer.classList.remove('hidden');
 
-      // Initialize close button
       const closeBtn = document.getElementById('closeFullscreenBtn');
       closeBtn.onclick = closeFullscreen;
 
-      // Initialize svg-pan-zoom
       const svg = content.querySelector('svg');
       if (svg) {
-        // Preserve viewBox and set dimensions
         const viewBox = svg.getAttribute('viewBox');
         if (viewBox) {
           const [x, y, width, height] = viewBox.split(' ').map(Number);
           const aspectRatio = width / height;
           const viewportWidth = window.innerWidth;
-          const viewportHeight = window.innerHeight - 60; // Account for close button
+          const viewportHeight = window.innerHeight - 60;
           let svgWidth = viewportWidth;
           let svgHeight = svgWidth / aspectRatio;
 
@@ -233,7 +301,6 @@ Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
           svg.style.height = 'auto';
         }
 
-        // Reset previous panZoom instance
         if (panZoomInstance) {
           panZoomInstance.destroy();
         }
@@ -244,13 +311,12 @@ Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
             controlIconsEnabled: true,
             fit: true,
             center: true,
-            minZoom: 0.05, // Allow zooming out for wide diagrams
-            maxZoom: 20, // Increase max zoom for detail
-            zoomScaleSensitivity: 0.3, // Smoother zoom
-            contain: false // Allow SVG to be fully visible
+            minZoom: 0.05,
+            maxZoom: 20,
+            zoomScaleSensitivity: 0.3,
+            contain: false
           });
 
-          // Adjust initial zoom for wide diagrams
           const svgWidth = svg.getBoundingClientRect().width;
           const viewportWidth = window.innerWidth;
           if (svgWidth > viewportWidth) {
@@ -259,13 +325,10 @@ Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
             panZoomInstance.fit();
           }
           panZoomInstance.center();
-
-          console.log("svg-pan-zoom initialized successfully");
         } catch (err) {
           console.error("svg-pan-zoom initialization failed:", err);
         }
 
-        // Handle window resize
         resizeHandler = () => {
           const viewportWidth = window.innerWidth;
           const viewportHeight = window.innerHeight - 60;
@@ -298,19 +361,16 @@ Application/Program->>User: Display result (e.g., "5 + 6 = 11")</textarea>
       const viewer = document.getElementById('fullscreenViewer');
       const content = document.getElementById('fullscreenContent');
 
-      // Clean up resize event listener
       if (resizeHandler) {
         window.removeEventListener('resize', resizeHandler);
-        resizeHandler = null;
+        resumeHandler = null;
       }
 
-      // Destroy panZoom instance
       if (panZoomInstance) {
         panZoomInstance.destroy();
         panZoomInstance = null;
       }
 
-      // Reset viewer
       viewer.classList.add('hidden');
       content.innerHTML = '';
     }
